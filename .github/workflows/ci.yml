@@ -1,0 +1,35 @@
+name: CMake Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build libgtest-dev
+          # build and install bundled GoogleTest libraries so linking works
+          pushd /usr/src/gtest || exit 0
+          sudo cmake CMakeLists.txt
+          sudo make
+          sudo cp *.a /usr/lib || true
+          popd
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build -- -j$(nproc)
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure -j2
